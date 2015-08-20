@@ -2238,6 +2238,15 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					}
 				}
 
+				// fix inconsistencies between inaccuracy modes
+				if (engineVersion < 20150820)
+				{
+					if (node.Key.StartsWith("Projectile") && node.Value.Value == "Bullet" && node.Value.Nodes.Exists(n => n.Key == "Inaccuracy"))
+					{
+						node.Value.Nodes.Add(new MiniYamlNode("ScaleInaccuracyWithRange", "true"));
+					}
+				}
+
 				UpgradeWeaponRules(engineVersion, ref node.Value.Nodes, node, depth + 1);
 			}
 		}

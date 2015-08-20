@@ -28,6 +28,9 @@ namespace OpenRA.Mods.Common.Effects
 		[Desc("Maximum offset at the maximum range.")]
 		public readonly WDist Inaccuracy = WDist.Zero;
 
+		[Desc("Scale inaccuracy offsets with range.")]
+		public readonly bool ScaleInaccuracyWithRange = false;
+
 		[Desc("Image to display.")]
 		public readonly string Image = null;
 
@@ -108,7 +111,8 @@ namespace OpenRA.Mods.Common.Effects
 			if (info.Inaccuracy.Length > 0)
 			{
 				var inaccuracy = OpenRA.Traits.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
-				var maxOffset = inaccuracy * (target - pos).Length / args.Weapon.Range.Length;
+				var maxOffset = info.ScaleInaccuracyWithRange ? inaccuracy * (target - pos).Length / args.Weapon.Range.Length
+					: inaccuracy;
 				target += WVec.FromPDF(world.SharedRandom, 2) * maxOffset / 1024;
 			}
 
