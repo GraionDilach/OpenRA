@@ -6,6 +6,7 @@ FireballLauncher:
 		Speed: 64
 		Image: FLAMEALL
 		Inaccuracy: 384
+		ScaleInaccuracyWithRange: true
 	Burst: 5
 	BurstDelay: 5
 	Warhead@1Dam: SpreadDamage
@@ -33,6 +34,7 @@ FiendShard:
 		Shadow: true
 		Angle: 60
 		Palette: greentiberium
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Damage: 35
 		Versus:

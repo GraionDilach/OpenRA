@@ -188,6 +188,7 @@ MammothMissiles:
 		ContrailLength: 10
 		Trail: smokey
 		Speed: 341
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 683
 		Damage: 25
@@ -348,6 +349,7 @@ HonestJohn:
 		Speed: 187
 		RangeLimit: 35
 		Angle: 88
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
 		Damage: 100

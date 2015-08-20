@@ -781,6 +781,7 @@ Weapons:
 			Inaccuracy: 1c682
 			Image: 120MM
 			ContrailLength: 50
+			ScaleInaccuracyWithRange: true
 		Warhead: SpreadDamage
 			Spread: 256
 			Versus:
@@ -842,6 +843,7 @@ Weapons:
 			Inaccuracy: 2c512
 			Trail: smokey
 			ContrailLength: 2
+			ScaleInaccuracyWithRange: true
 		Warhead: SpreadDamage
 			Spread: 341
 			ValidTargets: Ground
@@ -895,6 +897,7 @@ Weapons:
 			Angle: 30
 			Inaccuracy: 1c682
 			ContrailLength: 2
+			ScaleInaccuracyWithRange: true
 		Warhead: SpreadDamage
 			Spread: 426
 			Versus:
@@ -949,6 +952,7 @@ Weapons:
 			Inaccuracy: 426
 			Image: V2
 			Angle: 216
+			ScaleInaccuracyWithRange: true
 		Warhead: SpreadDamage
 			Spread: 853
 			Versus:

@@ -278,6 +278,7 @@ Weapons:
 			Inaccuracy: 3c341
 			Image: 120MM
 			ContrailLength: 30
+			ScaleInaccuracyWithRange: true
 		Warhead: SpreadDamage
 			Spread: 128
 			Versus:
@@ -307,6 +308,7 @@ Weapons:
 			Image: MISSILE
 			Trail: smokey
 			ContrailLength: 30
+			ScaleInaccuracyWithRange: true
 		Warhead: SpreadDamage
 			Spread: 426
 			Versus:

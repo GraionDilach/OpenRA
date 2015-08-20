@@ -54,6 +54,7 @@ SmallDebris:
 		Angle: 91, 264
 		Inaccuracy: 416
 		Image: dbris1sm # TODO: add some variation
+		ScaleInaccuracyWithRange: true
 
 LargeDebris:
 	ReloadDelay: 60
@@ -65,3 +66,4 @@ LargeDebris:
 		Angle: 91, 264
 		Inaccuracy: 416
 		Image: dbris1lg # TODO: add some variation
+		ScaleInaccuracyWithRange: true

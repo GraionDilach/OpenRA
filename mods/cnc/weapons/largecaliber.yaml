@@ -125,6 +125,7 @@ ArtilleryShell:
 		Inaccuracy: 1c256
 		ContrailLength: 30
 		Image: 120MM
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 341
 		Damage: 150

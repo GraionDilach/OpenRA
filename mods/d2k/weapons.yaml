@@ -111,6 +111,7 @@ Slung:
 		Angle: 88
 		Inaccuracy: 384
 		Image: MISSILE
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 192
 		Damage: 30
@@ -218,6 +219,7 @@ TurretGun:
 		Shadow: no
 		Inaccuracy: 288
 		Image: 120mm
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
 		Damage: 55
@@ -250,6 +252,7 @@ TowerMissile:
 		TrailInterval: 1
 		Speed: 298
 		Angle: 90
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 384
 		Damage: 50
@@ -275,6 +278,7 @@ TowerMissile:
 		Speed: 640
 		Inaccuracy: 384
 		Image: 120mm
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
 		Damage: 40
@@ -298,6 +302,7 @@ TowerMissile:
 		Speed: 704
 		Inaccuracy: 352
 		Image: 120mm
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
 		Damage: 40
@@ -352,6 +357,7 @@ DevBullet:
 		Image: MISSILE2
 		Trail: large_trail
 		TrailInterval: 1
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 384
 		Damage: 60
@@ -385,6 +391,7 @@ NerveGasMissile:
 		TrailPalette: deviatorgas
 		TrailUsePlayerPalette: true
 		TrailInterval: 1
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 96
 		Damage: 10
@@ -417,6 +424,7 @@ NerveGasMissile:
 		Inaccuracy: 1c256
 		ContrailLength: 20
 		Image: 155mm
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 384
 		Damage: 100
@@ -671,6 +679,7 @@ Grenade:
 		Angle: 62
 		Inaccuracy: 416
 		Image: BOMBS
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 192
 		Damage: 60
@@ -701,6 +710,7 @@ Shrapnel:
 		Angle: 91, 264
 		Inaccuracy: 416
 		Image: shrapnel
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 192
 		Damage: 60

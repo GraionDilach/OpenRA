@@ -261,6 +261,7 @@ SubMissile:
 		Image: MISSILE
 		Trail: smokey
 		ContrailLength: 30
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 426
 		Damage: 30
@@ -416,6 +417,7 @@ SCUD:
 		Inaccuracy: 213
 		Image: V2
 		Angle: 62
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 341
 		Damage: 45

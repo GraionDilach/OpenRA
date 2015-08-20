@@ -34,6 +34,7 @@ Flamer:
 		Image: fb3
 		Angle: 62
 		Inaccuracy: 853
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 341
 		Damage: 8
@@ -87,6 +88,7 @@ Grenade:
 		Angle: 62
 		Inaccuracy: 554
 		Image: BOMB
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
 		Damage: 60
@@ -117,6 +119,7 @@ DepthCharge:
 		Angle: 62
 		Blockable: false
 		Inaccuracy: 128
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 80

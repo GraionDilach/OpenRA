@@ -103,6 +103,7 @@ Proton:
 		Inaccuracy: 128
 		Image: TORPEDO
 		RangeLimit: 35
+		ScaleInaccuracyWithRange: true
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 20
