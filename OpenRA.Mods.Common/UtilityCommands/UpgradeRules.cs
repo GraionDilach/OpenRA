@@ -2248,6 +2248,18 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						Console.WriteLine("conjunction with one of the Targetable* actor traits.");
 					}
 				}
+					
+				// upgrade inaccuracy modes
+				if (engineVersion < 20150827)
+				{
+					if (node.Key.StartsWith("Projectile") && node.Value.Nodes.Exists(n => n.Key == "Inaccuracy"))
+					{
+						var inaccuracy = node.Value.Nodes.First(n => n.Key == "Inaccuracy");
+						inaccuracy.Key = "MaxInaccuracy";
+						if (node.Value.Value == "Missile")
+							node.Value.Nodes.Add(new MiniYamlNode("MinInaccuracy", inaccuracy.Value));
+					}
+				}
 
 				UpgradeWeaponRules(engineVersion, ref node.Value.Nodes, node, depth + 1);
 			}

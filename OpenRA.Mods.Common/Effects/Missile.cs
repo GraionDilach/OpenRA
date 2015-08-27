@@ -41,8 +41,11 @@ namespace OpenRA.Mods.Common.Effects
 		[Desc("Is the missile blocked by actors with BlocksProjectiles: trait.")]
 		public readonly bool Blockable = true;
 
+		[Desc("Minimum offset at the maximum range")]
+		public readonly WDist MinInaccuracy = WDist.Zero;
+
 		[Desc("Maximum offset at the maximum range")]
-		public readonly WDist Inaccuracy = WDist.Zero;
+		public readonly WDist MaxInaccuracy = WDist.Zero;
 
 		[Desc("Probability of locking onto and following target.")]
 		public readonly int LockOnProbability = 100;
@@ -118,10 +121,17 @@ namespace OpenRA.Mods.Common.Effects
 			if (world.SharedRandom.Next(100) <= info.LockOnProbability)
 				lockOn = true;
 
-			if (info.Inaccuracy.Length > 0)
+			if (info.MaxInaccuracy.Length > 0)
 			{
-				var inaccuracy = OpenRA.Traits.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
-				offset = WVec.FromPDF(world.SharedRandom, 2) * inaccuracy / 1024;
+				if (info.MaxInaccuracy.Length < info.MinInaccuracy.Length)
+					throw new System.InvalidOperationException(
+						"Weapon type '" + args.Weapon.Name + "' does not define valid inaccuracy settings on it's projectile!");
+
+				var inaccuracy = OpenRA.Traits.Util.ApplyPercentageModifiers(info.MinInaccuracy.Length, args.InaccuracyModifiers);
+				var scaleinaccuracy = OpenRA.Traits.Util.ApplyPercentageModifiers(
+					info.MaxInaccuracy.Length - info.MinInaccuracy.Length, args.InaccuracyModifiers);
+				var maxOffset = (scaleinaccuracy * (targetPosition - pos).Length / args.Weapon.Range.Length) + inaccuracy;
+				offset = WVec.FromPDF(world.SharedRandom, 2) * maxOffset / 1024;
 			}
 
 			if (!string.IsNullOrEmpty(info.Image))

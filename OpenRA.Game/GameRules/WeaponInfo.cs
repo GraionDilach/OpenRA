@@ -32,6 +32,8 @@ namespace OpenRA.GameRules
 
 	public sealed class WeaponInfo
 	{
+		public readonly string Name;
+
 		[Desc("The maximum range the weapon can fire.")]
 		public readonly WDist Range = WDist.Zero;
 
@@ -70,6 +72,7 @@ namespace OpenRA.GameRules
 		public WeaponInfo(string name, MiniYaml content)
 		{
 			FieldLoader.Load(this, content);
+			Name = name;
 			validTargetSet = new HashSet<string>(ValidTargets);
 			invalidTargetSet = new HashSet<string>(InvalidTargets);
 		}

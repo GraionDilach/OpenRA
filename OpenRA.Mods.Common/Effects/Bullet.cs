@@ -25,8 +25,11 @@ namespace OpenRA.Mods.Common.Effects
 		[Desc("Projectile speed in WDist / tick, two values indicate variable velocity.")]
 		public readonly WDist[] Speed = { new WDist(17) };
 
-		[Desc("Maximum offset at the maximum range.")]
-		public readonly WDist Inaccuracy = WDist.Zero;
+		[Desc("Minimum offset at the maximum range")]
+		public readonly WDist MinInaccuracy = WDist.Zero;
+
+		[Desc("Maximum offset at the maximum range")]
+		public readonly WDist MaxInaccuracy = WDist.Zero;
 
 		[Desc("Image to display.")]
 		public readonly string Image = null;
@@ -105,10 +108,17 @@ namespace OpenRA.Mods.Common.Effects
 				speed = info.Speed[0];
 
 			target = args.PassiveTarget;
-			if (info.Inaccuracy.Length > 0)
+
+			if (info.MaxInaccuracy.Length > 0)
 			{
-				var inaccuracy = OpenRA.Traits.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
-				var maxOffset = inaccuracy * (target - pos).Length / args.Weapon.Range.Length;
+				if (info.MaxInaccuracy.Length < info.MinInaccuracy.Length)
+					throw new System.InvalidOperationException(
+						"Weapon type '" + args.Weapon.Name + "' does not define valid inaccuracy settings on it's projectile!");
+
+				var inaccuracy = OpenRA.Traits.Util.ApplyPercentageModifiers(info.MinInaccuracy.Length, args.InaccuracyModifiers);
+				var scaleinaccuracy = OpenRA.Traits.Util.ApplyPercentageModifiers(
+					info.MaxInaccuracy.Length - info.MinInaccuracy.Length, args.InaccuracyModifiers);
+				var maxOffset = (scaleinaccuracy * (target - pos).Length / args.Weapon.Range.Length) + inaccuracy;
 				target += WVec.FromPDF(world.SharedRandom, 2) * maxOffset / 1024;
 			}
 
