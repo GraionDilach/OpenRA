@@ -1,4 +1,4 @@
-# Visual Studio
+﻿# Visual Studio
 Release
 bin
 obj
@@ -79,3 +79,7 @@ StyleCopViolations.xml
 
 # Support directory
 /Support
+
+#Attacque Supérior
+/OpenRA.Mods.AS/
+/mods/as/
