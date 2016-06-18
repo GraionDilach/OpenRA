@@ -83,3 +83,7 @@ StyleCopViolations.xml
 #Attacque Supérior
 /OpenRA.Mods.AS/
 /mods/as/
+
+#Red Alert 2
+/OpenRA.Mods.RA2/
+/mods/ra2/
