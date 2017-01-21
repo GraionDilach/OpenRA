@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using OpenRA.Mods.Common.Traits;
+using System.Collections.Generic;
 
 namespace OpenRA.Mods.Common.AI.Cabal
 {
@@ -22,7 +23,6 @@ namespace OpenRA.Mods.Common.AI.Cabal
         public static string Move = "Move";
         public static string RepairBuilding = "RepairBuilding";
         public static string SetRallyPoint = "SetRallyPoint";
-        public static string PlaceBuilding = "PlaceBuilding";
 
         /// <summary>
         /// triggers the DeployTransform order on the given actor
@@ -34,6 +34,17 @@ namespace OpenRA.Mods.Common.AI.Cabal
             QueueOrder(new Order("DeployTransform", actor, queued));
         }
 
+        public void PlaceBuilding(Actor playerActor, CPos targetLocation, ProductionItem building, ProductionQueue queue )
+        {
+            QueueOrder(new Order("PlaceBuilding", playerActor, false)
+            {
+                TargetLocation = targetLocation,
+                TargetString = building.Item,
+                TargetActor = queue.Actor,
+                SuppressVisualFeedback = true
+            });
+        }
+        
         public void QueueOrder(Order order)
         {
             _orders.Enqueue(order);

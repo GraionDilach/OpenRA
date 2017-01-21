@@ -8,11 +8,11 @@ namespace OpenRA.Mods.Common.AI.Cabal
         private readonly CabalOrderManager _orderManager;
         private readonly ProductionQueue _queue;
         private readonly Func<ProductionQueue, ActorInfo> _startConstructionCallback;
-        private readonly Action<ProductionItem> _constructionFinishedCallback;
+        private readonly Action<ProductionQueue, ProductionItem> _constructionFinishedCallback;
 
         private ProductionItem _lastItem = null;
 
-        public CabalQueueHandler(CabalOrderManager orderManager, ProductionQueue queue, Func<ProductionQueue, ActorInfo> startConstructionCallback, Action<ProductionItem> constructionFinishedCallback)
+        public CabalQueueHandler(CabalOrderManager orderManager, ProductionQueue queue, Func<ProductionQueue, ActorInfo> startConstructionCallback, Action<ProductionQueue, ProductionItem> constructionFinishedCallback)
         {
             _orderManager = orderManager;
             _queue = queue;
@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 //TODO: implement func callback to select what to build
                 if (_lastItem != null)
                 {
-                    _constructionFinishedCallback.Invoke(_lastItem);
+                    _constructionFinishedCallback.Invoke(_queue, _lastItem);
                 }
 
                 var itemToProduce = _startConstructionCallback.Invoke(_queue);
@@ -44,14 +44,14 @@ namespace OpenRA.Mods.Common.AI.Cabal
             //Building finished
             else if(currentItem.Done)
             {
-                _constructionFinishedCallback.Invoke(currentItem);
+                _constructionFinishedCallback.Invoke(_queue, currentItem);
                 _lastItem = null;
 
             }
             //unit finished
             else if(currentItem != _lastItem && _lastItem != null)
             {
-                _constructionFinishedCallback.Invoke(_lastItem);
+                _constructionFinishedCallback.Invoke(_queue, _lastItem);
                 _lastItem = currentItem;
             }
             else
