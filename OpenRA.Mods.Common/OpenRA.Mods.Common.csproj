@@ -123,7 +123,13 @@
     <Compile Include="ActorExts.cs" />
     <Compile Include="AI\AttackOrFleeFuzzy.cs" />
     <Compile Include="AI\BaseBuilder.cs" />
+    <Compile Include="AI\Cabal\CabalAIInfo.cs" />
+    <Compile Include="AI\Cabal\CabalBase.cs" />
+    <Compile Include="AI\Cabal\CabalOrderManager.cs" />
+    <Compile Include="AI\Cabal\QueueGroupNames.cs" />
+    <Compile Include="AI\Cabal\Utility.cs" />
     <Compile Include="AI\HackyAI.cs" />
+    <Compile Include="AI\Cabal\CabalAI.cs" />
     <Compile Include="AI\Squad.cs" />
     <Compile Include="AI\StateMachine.cs" />
     <Compile Include="AI\States\AirStates.cs" />
