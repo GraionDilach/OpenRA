@@ -96,7 +96,7 @@ namespace OpenRA.Mods.Common.AI
             var conyards = actors.Where(a => _info.BuildingCommonNames.ConstructionYard.Contains(a.Info.Name) && a.Owner == _player);
             if(conyards.Any())
             { 
-                _bases.Add(new CabalBase(conyards.First()));
+                _bases.Add(new CabalBase(conyards.First(), _orderManager, _info));
                 _newlyDeployedMcvs.Remove(mcv);
                 return true;
             }
