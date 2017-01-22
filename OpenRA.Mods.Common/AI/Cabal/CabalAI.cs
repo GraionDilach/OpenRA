@@ -117,11 +117,11 @@ namespace OpenRA.Mods.Common.AI
 
             if (mcv != null)
             {
-                Cabal.Utility.BotDebug("Deploying initial MCV.");
+                //Cabal.Utility.BotDebug("Deploying initial MCV.");
                 deployBase(mcv);
             }
-            else
-                Cabal.Utility.BotDebug("Can't find MCV.");
+            //else
+                //Cabal.Utility.BotDebug("Can't find MCV.");
         }
 
     }

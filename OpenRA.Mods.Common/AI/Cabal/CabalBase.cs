@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
 
         public CabalBase(Actor conyard, CabalOrderManager orderManager, CabalAIInfo aiInfo, World world, Player player)
         {
-            Utility.BotDebug("Initializing CabalBase");
+            Utility.BotDebug("Initializing CabalBase at {0},{1}", conyard.Location.X, conyard.Location.Y);
             //_initialBaseCenter = conyard.CenterPosition;
             //_defenseCenter = conyard.CenterPosition;
             _orderManager = orderManager;
