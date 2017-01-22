@@ -1,4 +1,5 @@
-﻿using OpenRA.Mods.Common.Traits;
+﻿using OpenRA.Mods.Common.Pathfinder;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 using System;
 using System.Collections.Generic;
@@ -15,55 +16,43 @@ namespace OpenRA.Mods.Common.AI.Cabal
         private readonly CabalAIInfo _aiInfo;
         private readonly World _world;
         private readonly Player _player;
-
-        private WPos _defenseCenter;
-        private WPos _initialBaseCenter;
-        
-
-        private CabalQueueHandler _buildingQueue = null;
-        private ProductionQueue _defenseQueue = null;
         private List<ProductionQueue> _unitQueues = new List<ProductionQueue>();
-
-        private List<Actor> _buildings = new List<Actor>();
-        private List<Actor> Units = new List<Actor>();
+        private List<Actor> _units = new List<Actor>();
+        
         private int _currentTick = 0;
-        private int _baseRemainingPower = 0;
-        private int _baseTotalPower = 0;
-        private int _maxBaseRadius = 25;
+        private readonly CabalBuildingManager _BuildingManager;
 
-        public CabalBase(Actor conyard, CabalOrderManager orderManager, CabalAIInfo info, World world, Player player)
+        public CabalBase(Actor conyard, CabalOrderManager orderManager, CabalAIInfo aiInfo, World world, Player player)
         {
             Utility.BotDebug("Initializing CabalBase");
-            _initialBaseCenter = conyard.CenterPosition;
-            _defenseCenter = conyard.CenterPosition;
+            //_initialBaseCenter = conyard.CenterPosition;
+            //_defenseCenter = conyard.CenterPosition;
             _orderManager = orderManager;
-            _aiInfo = info;
+            _aiInfo = aiInfo;
             _world = world;
             _player = player;
-            AssingConyardQueues(conyard);
-            _buildings.Add(conyard);
-            _baseRemainingPower = conyard.Info.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(p => p.Amount);
-            _baseTotalPower = _baseRemainingPower;
+            //LocateResourceGenerators();
+            //_baseRemainingPower = conyard.Info.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(p => p.Amount);
+            //_baseTotalPower = _baseRemainingPower;
+            //_pathfinder = _world.WorldActor.Trait<IPathFinder>();
+            _BuildingManager = new CabalBuildingManager(conyard, orderManager, aiInfo, world, player);
         }
-
-        public void AssingConyardQueues(Actor conyard)
-        {
-            Utility.BotDebug("Assigning build queues");
-            var productionQueues = conyard.TraitsImplementing<ProductionQueue>();
-            _buildingQueue = new CabalQueueHandler(_orderManager, productionQueues.First(pq => pq.Info.Group == "Building"), ChooseBuildingToBuild, BuildingConstructionFinished);
-            _defenseQueue = productionQueues.First(pq => pq.Info.Group == "Defence");
-        }
-        
         public void Tick()
         {
-            if (_currentTick % 5 == 0)
-            {
-                CalculatePowerLevel();
-                _buildingQueue.Tick();
-            }
-
+            _BuildingManager.Tick(_currentTick);
             _currentTick++;
         }
+
+        /*
+        private void LocateResourceGenerators()
+        {
+            var baseCenter = _world.Map.CellContaining(_initialBaseCenter);
+            var resourceGenerators = _world.FindActorsInCircle(_initialBaseCenter, WDist.FromCells(_maxBaseRadius)).Where(a => a.Info.HasTraitInfo<SeedsResourceInfo>());
+            _nearbyResourceGenerators = resourceGenerators.OrderBy(a => (a.Location-baseCenter).Length).ToList();
+        }
+        */
+
+
 
         //TODO:put into seperate class
         /// <summary>
@@ -71,19 +60,24 @@ namespace OpenRA.Mods.Common.AI.Cabal
         /// </summary>
         /// <param name="queue"></param>
         /// <returns></returns>
-        private ActorInfo ChooseBuildingToBuild(ProductionQueue queue)
+        /*private ActorInfo ChooseBuildingToBuild(ProductionQueue queue)
         {
             Utility.BotDebug("Could create a new Building");
 
             ActorInfo buildingToBuild = null;
             UpdateBuildings();
-            var buildableThings = queue.BuildableItems();
 
+            //used to basecrawl towards resources for better efficiency
+            _buildTowardsResources = _nearbyResourceGenerators.Any(a => !_allocatedResourceGenerators.ContainsKey(a));
+
+            var buildableThings = queue.BuildableItems();
             //lets start simple and just allow it to start production of power plants
             var power = buildableThings.Where(info => _aiInfo.BuildingCommonNames.Power.Contains(info.Name)).FirstOrDefault();
             var refinery = buildableThings.Where(info => _aiInfo.BuildingCommonNames.Refinery.Contains(info.Name)).FirstOrDefault();
             var normalStructures = buildableThings.Where(info => !_aiInfo.BuildingCommonNames.Refinery.Contains(info.Name) && !_aiInfo.BuildingCommonNames.Power.Contains(info.Name));
 
+
+            
             if(_currentTick >= 20 && !_buildings.Any(b => _aiInfo.BuildingCommonNames.Refinery.Contains(b.Info.Name)))
             {
                 return refinery;
@@ -93,7 +87,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
             {
                 return power;
             }
-            if(_buildings.Count(a => _aiInfo.BuildingCommonNames.Production.Contains(a.Info.Name)) >= _buildings.Count(a => _aiInfo.BuildingCommonNames.Refinery.Contains(a.Info.Name)) * 3)
+            if(_currentTick >= 20 && _buildings.Count(a => _aiInfo.BuildingCommonNames.Production.Contains(a.Info.Name)) >= _buildings.Count(a => _aiInfo.BuildingCommonNames.Refinery.Contains(a.Info.Name)) * 3)
             {
                 normalStructures = normalStructures.Where(ns => !_aiInfo.BuildingCommonNames.Production.Contains(ns.Name));
             }
@@ -122,7 +116,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 Utility.BotDebug("Choose to build {0}", buildingToBuild.Name);
                 return buildingToBuild;
             }
-
+            
             Utility.BotDebug("Choose to build nothing");
             return null;
         }
@@ -131,12 +125,17 @@ namespace OpenRA.Mods.Common.AI.Cabal
 
         private void BuildingConstructionFinished(ProductionQueue queue, ProductionItem item)
         {
-            CPos? buildingLocation = ChooseBuildLocation(item);
-            if (buildingLocation.HasValue)
-            {
-                Utility.BotDebug("Building {0} at location {1},{2}", item.Item, buildingLocation.Value.X, buildingLocation.Value.Y);
-                _orderManager.PlaceBuilding(_player.PlayerActor, buildingLocation.Value, item, queue);
+            if(lastPlacementAttempt == 0)
+            { 
+                CPos? buildingLocation = ChooseBuildLocation(item);
+                if (buildingLocation.HasValue)
+                {
+                    Utility.BotDebug("Building {0} at location {1},{2}", item.Item, buildingLocation.Value.X, buildingLocation.Value.Y);
+                    _orderManager.PlaceBuilding(_player.PlayerActor, buildingLocation.Value, item, queue);
+                }
+                lastPlacementAttempt += 10;
             }
+            lastPlacementAttempt--;
         }
 
         //really shitty build location logic but will get the job done for the first tests
@@ -148,23 +147,45 @@ namespace OpenRA.Mods.Common.AI.Cabal
             //probably shit code but first attempt
             CPos baseCenter = _world.Map.CellContaining(_initialBaseCenter);
 
-            //TODO: make max base size changeable
-            var cells = _world.Map.FindTilesInAnnulus(baseCenter, 3, _maxBaseRadius);
+            var closestFreeResourceGenerator = _nearbyResourceGenerators.FirstOrDefault(a => !_allocatedResourceGenerators.ContainsKey(a));
 
-            cells = cells.Shuffle(Game.CosmeticRandom);
-
-            //TODO: check if the building is a refinery if it is check for near by tibtree actors and try to place as close as possible to it
-
-            foreach(CPos cell in cells)
+            List<CPos> cellsToCheck = null;
+            //closestFreeResourceGenerator
+            if (closestFreeResourceGenerator != null)
             {
-                if (_world.CanPlaceBuilding(item.Item, buildingInfo, cell, null))
+                Utility.BotDebug("crawling toward resource");
+                var harvesterActor = _world.Map.Rules.Actors.FirstOrDefault(ai => ai.Value.HasTraitInfo<HarvesterInfo>());
+                var mobileInfo = harvesterActor.Value.TraitInfoOrDefault<MobileInfo>();
+                //closestFreeResourceGenerator.
+                var path = _pathfinder.FindPath(PathSearch.FromPoint(_world, mobileInfo, _conyard, _world.Map.CellContaining(_initialBaseCenter), closestFreeResourceGenerator.Location, false));
+                cellsToCheck = path;
+                //just a cheat to test basecrawling
+                if(isRefinery)
+                {
+                    _allocatedResourceGenerators.Add(closestFreeResourceGenerator, null);
+                }
+            }
+            else
+            {
+                Utility.BotDebug("choosing random spot");
+
+                //TODO: make max base size changeable
+                var cells = _world.Map.FindTilesInAnnulus(baseCenter, 3, _maxBaseRadius);
+
+                cells = cells.Shuffle(Game.CosmeticRandom);
+                cellsToCheck = cells.ToList();
+            }
+            foreach(CPos cell in cellsToCheck)
+            {
+                if (_world.CanPlaceBuilding(item.Item, buildingInfo, cell, null) && buildingInfo.IsCloseEnoughToBase(_world, _player, item.Item, cell))
                 {
                     Utility.BotDebug("Found build location for {0}", item.Item);
                     return cell;
                 }
             }
+            
 
-            Utility.BotDebug("No buildlocation for {0}", item.Item);
+            Utility.BotDebug("No build location for {0}", item.Item);
             return null;
         }
 
@@ -183,8 +204,9 @@ namespace OpenRA.Mods.Common.AI.Cabal
             var powerInfos = _buildings.Where(b => b.Info.HasTraitInfo<PowerInfo>()).SelectMany(b => b.Info.TraitInfos<PowerInfo>().Where(ti => ti.EnabledByDefault));
             _baseRemainingPower = powerInfos.Sum(info => info.Amount);
             _baseTotalPower = powerInfos.Where(info => info.Amount > 0).Sum(info => info.Amount);
-            //thats the base internal power logic AI should be able to override orders at a later point to make a better cross base decision
+            //thats the base internal power logic. AI should be able to override orders at a later point to make a better cross base decision
 
         }
+        */
     }
 }

@@ -125,6 +125,7 @@
     <Compile Include="AI\BaseBuilder.cs" />
     <Compile Include="AI\Cabal\CabalAIInfo.cs" />
     <Compile Include="AI\Cabal\CabalBase.cs" />
+    <Compile Include="AI\Cabal\CabalBuildingManager.cs" />
     <Compile Include="AI\Cabal\CabalOrderManager.cs" />
     <Compile Include="AI\Cabal\CabalQueueHandler.cs" />
     <Compile Include="AI\Cabal\QueueGroupNames.cs" />

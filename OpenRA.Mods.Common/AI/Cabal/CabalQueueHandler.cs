@@ -1,5 +1,6 @@
 ﻿using OpenRA.Mods.Common.Traits;
 using System;
+using System.Collections.Generic;
 
 namespace OpenRA.Mods.Common.AI.Cabal
 {
@@ -20,6 +21,10 @@ namespace OpenRA.Mods.Common.AI.Cabal
             _startConstructionCallback = startConstructionCallback;
         }
 
+        public IEnumerable<ActorInfo> GetBuildabeItems()
+        {
+            return _queue.BuildableItems();
+        }
 
         public void Tick()
         {
