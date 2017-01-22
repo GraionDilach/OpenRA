@@ -53,9 +53,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
             _resourceSeeder = FindResourcesSeedersInCircleAroundBase(WDist.FromCells(_maxBaseRadius), _initialBaseCenterWPos).First();
             Utility.BotDebug(_playerColor, "Found ResourceSeeder at {0},{1}", _resourceSeeder.Location.X, _resourceSeeder.Location.Y);
             _refineryInfo = _buildingQueue.GetBuildabeItems().Where(info => _aiInfo.BuildingCommonNames.Refinery.Contains(info.Name)).First();
-            //_currentRefineryTargetLocation = ChooseRefineryLocation(_resourceSeeder);
             var newLogic = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, _refineryInfo.TraitInfo<BuildingInfo>(), _refineryInfo.Name);
-            //Utility.BotDebug(_playerColor, "RefineryComparison new : {0},{1} ; old : {2},{3}", newLogic.Value.X, newLogic.Value.Y, _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);
             _currentRefineryTargetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, _refineryInfo.TraitInfo<BuildingInfo>(), _refineryInfo.Name);
             Utility.BotDebug(_playerColor, "RefineryTarget at {0},{1}", _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);
             _playerColor = player.Color.RGB;
@@ -136,20 +134,13 @@ namespace OpenRA.Mods.Common.AI.Cabal
         }
 
         private IEnumerable<Actor> FindResourcesSeedersInCircleAroundBase(WDist radius, WPos height)
-        {
-            
+        {            
             var resourceSeeders = _world.FindActorsInCircle(_initialBaseCenterWPos, radius).Where(a => a.Info.HasTraitInfo<SeedsResourceInfo>());
             return resourceSeeders.Where(rs => Math.Abs(_initialBaseCenterWPos.Z - rs.CenterPosition.Z) <= 512 * 3 ) .OrderBy(a => Math.Abs((a.Location - _initialBaseCenterCPos).Length)).ToList();
         }
 
         private ActorInfo ChooseBuildingToBuild(ProductionQueue queue)
         {
-            //Utility.BotDebug("New Construction Options");
-            //if(_resourceSeeder!= null)
-            //{
-            //    _currentRefineryTargetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, _refineryInfo.TraitInfo<BuildingInfo>(), _refineryInfo.Name);//ChooseRefineryLocation(_resourceSeeder);
-            //}
-
             var constructionOptions = queue.BuildableItems();
 
             var power = constructionOptions.Where(info => _aiInfo.BuildingCommonNames.Power.Contains(info.Name)).FirstOrDefault();
@@ -177,94 +168,6 @@ namespace OpenRA.Mods.Common.AI.Cabal
 
             return null;
         }
-
-        
-
-        /// <summary>
-        /// function to choose the a proper location for the next refinery to be build
-        /// will be used to define basecrawling direction and to prevent building
-        /// a other building on that space
-        /// </summary>
-        /// <param name="resourceSeeder">the resource Seeder we want the refinery to be as close as possible to</param>
-        /// <returns>CPos of refinery build location or null if no build spot could be found</returns>
-        /*private CPos? ChooseRefineryLocation(Actor resourceSeeder)
-        {
-            if(_buildingQueue == null)
-            {
-                return null;
-            }
-            var refineryInfo = _buildingQueue.GetBuildabeItems().First(ai => _aiInfo.BuildingCommonNames.Refinery.Contains(ai.Name));
-            BuildingInfo buildingInfo = refineryInfo.TraitInfoOrDefault<BuildingInfo>();
-
-            var harvesterActor = _world.Map.Rules.Actors.FirstOrDefault(ai => ai.Value.HasTraitInfo<HarvesterInfo>());
-            var mobileInfo = harvesterActor.Value.TraitInfoOrDefault<MobileInfo>();
-            List<CPos> path = null;
-            var cellsAroundSeeder = _world.Map.FindTilesInCircle(resourceSeeder.Location, 1).ToList();
-            cellsAroundSeeder.ForEach(cpos =>
-            {
-                var currentPath = _pathfinder.FindPath(PathSearch.FromPoint(_world, mobileInfo, _conyard, _initialBaseCenterCPos, cpos, false));
-
-                if (path == null || currentPath.Count() < path.Count)
-                    path = currentPath.ToList();
-            });
-
-            //path = _pathfinder.FindPath(PathSearch.FromPoint(_world, mobileInfo, _conyard, _initialBaseCenterCPos, resourceSeeder.Location, false));
-            int baseToSeeder = Math.Abs((resourceSeeder.Location - _initialBaseCenterCPos).Length);
-            
-            IEnumerable<CPos> currentRefineryCells = null;
-            if(_currentRefineryTargetLocation.HasValue)
-                currentRefineryCells = GetCellsFromBuildInfo(_currentRefineryTargetLocation.Value, buildingInfo);
-            foreach (CPos cell in path)
-            {
-                if(_resLayer.GetResource(cell) == null)
-                {
-                    var potentialCells = _world.Map.FindTilesInCircle(cell, baseToSeeder);
-
-                    var sortedByDistanceToSeeder = potentialCells.Where(pc => Math.Abs((pc - _initialBaseCenterCPos).Length) <= baseToSeeder).Select(pc => new { DistanceSeeder = Math.Abs((pc - resourceSeeder.Location).Length), DistanceBase = Math.Abs((_initialBaseCenterCPos - pc).Length), Location = pc}).OrderBy(pc => pc.DistanceSeeder + pc.DistanceBase);
-
-                    foreach (var potentialCell in sortedByDistanceToSeeder)
-                    {
-                        var availableCell = CheckBuildlocationIntersectingCell(refineryInfo.Name, buildingInfo, potentialCell.Location);
-                        if(availableCell != null)
-                        {
-                            return availableCell;
-                        }
-                    }
-                }
-            }
-
-            return null;
-        }
-        
-        public CPos? CheckBuildlocationIntersectingCell(string name, BuildingInfo buildingInfo, CPos targetCell, IEnumerable<CPos> forbiddenCells = null, int radius = 0)
-        {
-            //TODO: implement radius
-            for (int x = buildingInfo.Dimensions.X; x >= 0; x--)
-            {
-                for (int y = buildingInfo.Dimensions.Y; y >= 0; y--)
-                {
-                    CPos currentCell = new CPos(targetCell.X + x, targetCell.Y + y);
-                    if (_world.CanPlaceBuilding(name, buildingInfo, currentCell, null))
-                    {
-                        if (forbiddenCells == null)
-                            return currentCell;
-                        var buildingCells = GetCellsFromBuildInfo(currentCell, buildingInfo);
-                        //Utility.BotDebug("Checking forbidden cells");
-                        if(!forbiddenCells.Any(fc => buildingCells.Any(bc => bc.Equals(fc))))
-                        {
-
-                            return currentCell;
-                        }
-                        else
-                        {
-                            //Utility.BotDebug("blocking refinery spot");
-                        }
-                            
-                    }
-                }
-            }
-            return null;
-        }*/
 
         private void BuildingConstructionFinished(ProductionQueue queue, ProductionItem item)
         {
