@@ -5,6 +5,7 @@ using System.Linq;
 using System;
 using System.Drawing;
 using OpenRA.Traits;
+using OpenRA.Mods.Common.Traits.Radar;
 
 namespace OpenRA.Mods.Common.AI.Cabal
 {
@@ -26,6 +27,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
         private int _baseTotalPower = 0;
         private Actor _conyard;
         private CabalQueueHandler _buildingQueue = null;
+        private CabalQueueHandler _defenseQueue = null;
         private Actor _resourceSeeder;
         private List<Actor> _usedResourceSeeders = new List<Actor>();
         private List<Actor> _buildings = new List<Actor>();
@@ -33,7 +35,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
         private ActorInfo _refineryInfo;
         private int _remainingTicksSinceLastConstructionOrder = 0; //calculate this value
         private int _orderDelay = 50;
-        private int _defaultBuildingSpacing = 1;
+        private int _defaultBuildingSpacing = 1; //Default = 1
         private Color _playerColor;
 
         //TestFlag for building placement
@@ -42,7 +44,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
         private int _currentProductionCount;
         private int _refineryToProductionRatio = 2;
 
-        //private ProductionQueue _defenseQueue = null;
+        
 
         public CabalBuildingManager(Actor conyard, CabalOrderManager orderManager, CabalAIInfo aiInfo, World world, Player player)
         {
@@ -85,13 +87,13 @@ namespace OpenRA.Mods.Common.AI.Cabal
         public CPos? GetBuildLocationTowardsTarget(CPos target, CPos source, BuildingInfo buildingInfo, string name, bool checkIsCloseEnough = false, int border = 0, IEnumerable<CPos> disabledCells = null)
         {
             int maxDistance = Math.Abs((source - target).Length);
-            var cellstoCheck = _world.Map.FindTilesInAnnulus(target, 0, maxDistance);
+            var cellstoCheck = _world.Map.FindTilesInAnnulus(source, 0, maxDistance);
 
             var potentialTargetCells = cellstoCheck.Select(c => new {
                 Position = c,
                 distanceSource = Math.Abs((source - c).Length),
                 distanceTarget = Math.Abs((c - target).Length),
-            }).Where(c => c.distanceSource <= maxDistance)
+            }).Where(c => c.distanceTarget <= maxDistance)
             .OrderBy(c => c.distanceSource + c.distanceTarget)
             .ThenBy(c => c.distanceTarget)
             .ThenBy(c => c.distanceSource);
@@ -150,7 +152,17 @@ namespace OpenRA.Mods.Common.AI.Cabal
             //Utility.BotDebug("Assigning build queues");
             var productionQueues = conyard.TraitsImplementing<ProductionQueue>();
             _buildingQueue = new CabalQueueHandler(_orderManager, productionQueues.First(pq => pq.Info.Group == QueueGroupNames.Building), ChooseBuildingToBuild, BuildingConstructionFinished);
-            // _defenseQueue = productionQueues.First(pq => pq.Info.Group == QueueGroupNames.Defense);
+            _defenseQueue = new CabalQueueHandler(_orderManager, productionQueues.First(pq => pq.Info.Group == QueueGroupNames.Defense), ChooseDefenseToBuild, DefenseConstructionFinished);
+        }
+
+        private void DefenseConstructionFinished(ProductionQueue queue, ProductionItem item)
+        {
+            throw new NotImplementedException();
+        }
+
+        private ActorInfo ChooseDefenseToBuild(ProductionQueue queue)
+        {
+            throw new NotImplementedException();
         }
 
         private IEnumerable<Actor> FindResourcesSeedersInCircleAroundBase(WDist radius, WPos height)
@@ -174,7 +186,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
 
             ActorInfo buildingToBuild = null;
             _remainingTicksSinceLastConstructionOrder = _orderDelay;
-            if (_baseRemainingPower < _baseTotalPower * 0.2)
+            if (_baseRemainingPower < _baseTotalPower * 0.1)
             {
                 return power;
             }
@@ -210,12 +222,19 @@ namespace OpenRA.Mods.Common.AI.Cabal
             {
                 normalStructures.RemoveAll(info => _aiInfo.BuildingCommonNames.Production.Contains(info.Name));
             }
+            if(_currentProductionCount >= 4 && !_buildings.Any(b => b.Info.HasTraitInfo<ProvidesRadarInfo>()))
+            {
+                return normalStructures.First(info => info.HasTraitInfo<ProvidesRadarInfo>());
+            }
 
             //allow basecrawling to happen with powerplants if nothing else is buildable
             if(!normalStructures.Any() && _currentRefineryTargetLocation != null)
             {
                 return power;
             }
+            if (!normalStructures.Any())
+                return null;
+
             buildingToBuild = normalStructures.Random(Game.CosmeticRandom);
             if (buildingToBuild != null)
             {
@@ -258,18 +277,8 @@ namespace OpenRA.Mods.Common.AI.Cabal
             }
             else
             {
+                targetLocation = ChooseRandomBuildLocationAroundCell(_initialBaseCenterCPos, buildingInfo, item.Item, 3, _maxBaseRadius);
                 //TODO: build at a random spot
-                var cells = _world.Map.FindTilesInAnnulus(_initialBaseCenterCPos, 3, _maxBaseRadius);
-
-                cells = cells.Shuffle(Game.CosmeticRandom);
-                var cellsToCheck = cells.ToList();
-                foreach (CPos cell in cellsToCheck)
-                {
-                    var location = ValidateBuildLocation(cell, buildingInfo, item.Item, true, _defaultBuildingSpacing);
-
-                    if (location != null)
-                        targetLocation = location;
-                }
             }
             if(targetLocation.HasValue)
             {
@@ -282,6 +291,23 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 Utility.BotDebug(_playerColor, "no building location for {0}", item.Item);
             }
         }
+
+        private CPos? ChooseRandomBuildLocationAroundCell(CPos source, BuildingInfo buildingInfo, string name, int minRadius, int maxRadius)
+        {
+            var cells = _world.Map.FindTilesInAnnulus(source, minRadius, maxRadius);
+
+            cells = cells.Shuffle(Game.CosmeticRandom);
+            var cellsToCheck = cells.ToList();
+            foreach (CPos cell in cellsToCheck)
+            {
+                var location = ValidateBuildLocation(cell, buildingInfo, name, true, _defaultBuildingSpacing);
+
+                if (location != null)
+                    return location;
+            }
+            return null;
+        }
+
         private void SearchForNearbyResources()
         {
             _resourceSeeder = FindResourcesSeedersInCircleAroundBase(WDist.FromCells(_maxBaseRadius), _initialBaseCenterWPos).Where(rs => !_usedResourceSeeders.Contains(rs)).FirstOrDefault();
@@ -289,7 +315,14 @@ namespace OpenRA.Mods.Common.AI.Cabal
             {
                 Utility.BotDebug(_playerColor, "Found ResourceSeeder at {0},{1}", _resourceSeeder.Location.X, _resourceSeeder.Location.Y);
                 _currentRefineryTargetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, _refineryInfo.TraitInfo<BuildingInfo>(), _refineryInfo.Name, false, _firstRefineryPlacementEver ? 0 : _defaultBuildingSpacing);
-                Utility.BotDebug(_playerColor, "RefineryTarget at {0},{1}", _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);
+                if(_currentRefineryTargetLocation.HasValue)
+                {
+                    Utility.BotDebug(_playerColor, "RefineryTarget at {0},{1}", _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);
+                }
+                else
+                {
+                    Utility.BotDebug(_playerColor, "NoRefineryTarget for Seeder at {0},{1}", _resourceSeeder.Location.X, _resourceSeeder.Location.Y);
+                }                
             }
         }
 
