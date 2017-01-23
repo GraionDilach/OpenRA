@@ -84,30 +84,42 @@ namespace OpenRA.Mods.Common.AI.Cabal
                     Position = c,
                     distanceSource = Math.Abs((source - c).Length),
                     distanceTarget = Math.Abs((c - target).Length),
-                }).Where(c => (c.distanceSource + c.distanceTarget) > maxDistance).OrderBy(c => c.distanceSource + c.distanceTarget).ThenBy(c => c.distanceTarget);
+                }).Where(c => (c.distanceSource + c.distanceTarget) >= maxDistance).OrderBy(c => c.distanceSource + c.distanceTarget).ThenBy(c => c.distanceTarget).ThenBy(c => c.distanceSource);
 
                 foreach(var cell in orderdCells)
                 {
-                    if(_world.CanPlaceBuilding(name, buildingInfo, cell.Position, null) && (!checkIsCloseEnough || buildingInfo.IsCloseEnoughToBase(_world, _player, name, cell.Position)))
+                    var location = ValidateBuildLocation(cell.Position, buildingInfo, name, checkIsCloseEnough, border, disabledCells);
+                    if(location!= null)
                     {
-                        var buildingCells = GetCellsFromBuildInfo(cell.Position, buildingInfo, border);
-                        if (border > 0)
-                        {
-                            if (buildingCells.Any(bc => _world.WorldActor.Trait<BuildingInfluence>().GetBuildingAt(bc) != null))
-                            {
-                                continue;
-                            }
-                        }
-                        if(disabledCells != null && buildingCells.Any(bc => disabledCells.Any(dc => dc.Equals(bc))))
-                        {
-                            continue;
-                        }
-                        
-                        return cell.Position;
-                        
+                        return location;
                     }
                 }
             }
+            return null;
+        }
+
+        private CPos? ValidateBuildLocation(CPos cell, BuildingInfo buildingInfo, string name, bool checkIsCloseEnough = false,int border = 0, IEnumerable<CPos> disabledCells = null)
+        {
+            if (_world.CanPlaceBuilding(name, buildingInfo, cell, null) && (!checkIsCloseEnough || buildingInfo.IsCloseEnoughToBase(_world, _player, name, cell)))
+            {
+                var buildingCells = GetCellsFromBuildInfo(cell, buildingInfo, border);
+                if (border > 0)
+                {
+                    //TODO: prevent border from block build location if there is only ore or a slope
+                    if (buildingCells.Any(bc => _world.WorldActor.Trait<BuildingInfluence>().GetBuildingAt(bc) != null))
+                    {
+                        return null;
+                    }
+                }
+                if (disabledCells != null && buildingCells.Any(bc => disabledCells.Any(dc => dc.Equals(bc))))
+                {
+                    return null;
+                }
+
+                return cell;
+
+            }
+
             return null;
         }
 
@@ -212,12 +224,10 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 var cellsToCheck = cells.ToList();
                 foreach (CPos cell in cellsToCheck)
                 {
-                    if (_world.CanPlaceBuilding(item.Item, buildingInfo, cell, null) && buildingInfo.IsCloseEnoughToBase(_world, _player, item.Item, cell))
-                    {
-                        //Utility.BotDebug("Found build location for {0}", item.Item);
-                        targetLocation = cell;
-                        break;
-                    }
+                    var location = ValidateBuildLocation(cell, buildingInfo, item.Item, true, 1);
+
+                    if (location != null)
+                        targetLocation = location;
                 }
             }
             if(targetLocation.HasValue)
