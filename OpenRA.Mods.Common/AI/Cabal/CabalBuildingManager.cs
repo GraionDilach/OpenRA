@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Drawing;
+using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.AI.Cabal
 {
@@ -32,7 +33,14 @@ namespace OpenRA.Mods.Common.AI.Cabal
         private ActorInfo _refineryInfo;
         private int _remainingTicksSinceLastConstructionOrder = 0; //calculate this value
         private int _orderDelay = 50;
+        private int _defaultBuildingSpacing = 1;
         private Color _playerColor;
+
+        //TestFlag for building placement
+        private bool _firstRefineryPlacementEver = true;
+        private int _currentRefineryCount;
+        private int _currentProductionCount;
+        private int _refineryToProductionRatio = 2;
 
         //private ProductionQueue _defenseQueue = null;
 
@@ -50,12 +58,13 @@ namespace OpenRA.Mods.Common.AI.Cabal
             _baseRemainingPower = conyard.Info.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(p => p.Amount);
             _baseTotalPower = _baseRemainingPower;
             AssingConyardQueues(conyard);
-            _resourceSeeder = FindResourcesSeedersInCircleAroundBase(WDist.FromCells(_maxBaseRadius), _initialBaseCenterWPos).First();
-            Utility.BotDebug(_playerColor, "Found ResourceSeeder at {0},{1}", _resourceSeeder.Location.X, _resourceSeeder.Location.Y);
             _refineryInfo = _buildingQueue.GetBuildabeItems().Where(info => _aiInfo.BuildingCommonNames.Refinery.Contains(info.Name)).First();
-            var newLogic = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, _refineryInfo.TraitInfo<BuildingInfo>(), _refineryInfo.Name);
+
+            /*_resourceSeeder = FindResourcesSeedersInCircleAroundBase(WDist.FromCells(_maxBaseRadius), _initialBaseCenterWPos).First();
+            Utility.BotDebug(_playerColor, "Found ResourceSeeder at {0},{1}", _resourceSeeder.Location.X, _resourceSeeder.Location.Y);
             _currentRefineryTargetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, _refineryInfo.TraitInfo<BuildingInfo>(), _refineryInfo.Name);
-            Utility.BotDebug(_playerColor, "RefineryTarget at {0},{1}", _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);
+            Utility.BotDebug(_playerColor, "RefineryTarget at {0},{1}", _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);*/
+
             _playerColor = player.Color.RGB;
         }
 
@@ -76,23 +85,22 @@ namespace OpenRA.Mods.Common.AI.Cabal
         public CPos? GetBuildLocationTowardsTarget(CPos target, CPos source, BuildingInfo buildingInfo, string name, bool checkIsCloseEnough = false, int border = 0, IEnumerable<CPos> disabledCells = null)
         {
             int maxDistance = Math.Abs((source - target).Length);
-            for(int i = 0; i < maxDistance; i++)
+            var cellstoCheck = _world.Map.FindTilesInAnnulus(target, 0, maxDistance);
+
+            var potentialTargetCells = cellstoCheck.Select(c => new {
+                Position = c,
+                distanceSource = Math.Abs((source - c).Length),
+                distanceTarget = Math.Abs((c - target).Length),
+            }).Where(c => c.distanceSource <= maxDistance)
+            .OrderBy(c => c.distanceSource + c.distanceTarget)
+            .ThenBy(c => c.distanceTarget)
+            .ThenBy(c => c.distanceSource);
+            foreach (var cell in potentialTargetCells)
             {
-                var cellstoCheck = _world.Map.FindTilesInAnnulus(target, i, i + 1);
-
-                var orderdCells = cellstoCheck.Select(c => new {
-                    Position = c,
-                    distanceSource = Math.Abs((source - c).Length),
-                    distanceTarget = Math.Abs((c - target).Length),
-                }).Where(c => (c.distanceSource + c.distanceTarget) >= maxDistance).OrderBy(c => c.distanceSource + c.distanceTarget).ThenBy(c => c.distanceTarget).ThenBy(c => c.distanceSource);
-
-                foreach(var cell in orderdCells)
+                var location = ValidateBuildLocation(cell.Position, buildingInfo, name, checkIsCloseEnough, border, disabledCells);
+                if (location != null)
                 {
-                    var location = ValidateBuildLocation(cell.Position, buildingInfo, name, checkIsCloseEnough, border, disabledCells);
-                    if(location!= null)
-                    {
-                        return location;
-                    }
+                    return location;
                 }
             }
             return null;
@@ -148,16 +156,21 @@ namespace OpenRA.Mods.Common.AI.Cabal
         private IEnumerable<Actor> FindResourcesSeedersInCircleAroundBase(WDist radius, WPos height)
         {            
             var resourceSeeders = _world.FindActorsInCircle(_initialBaseCenterWPos, radius).Where(a => a.Info.HasTraitInfo<SeedsResourceInfo>());
-            return resourceSeeders.Where(rs => Math.Abs(_initialBaseCenterWPos.Z - rs.CenterPosition.Z) <= 512 * 3 ) .OrderBy(a => Math.Abs((a.Location - _initialBaseCenterCPos).Length)).ToList();
+            return resourceSeeders.Where(rs => Math.Abs(_initialBaseCenterWPos.Z - rs.CenterPosition.Z) <= 512 * 3 ).Where( rs => !_world.FindActorsInCircle(rs.CenterPosition, WDist.FromCells(8)).Any(a => a.Info.HasTraitInfo<BuildingInfo>() && (_player.Stances[a.Owner] == Stance.Enemy))).OrderBy(a => Math.Abs((a.Location - _initialBaseCenterCPos).Length)).ToList();
         }
 
         private ActorInfo ChooseBuildingToBuild(ProductionQueue queue)
         {
+            if(_currentRefineryTargetLocation == null && (_currentRefineryCount == 0 || _currentRefineryCount * _refineryToProductionRatio <= _currentProductionCount))
+            {
+                SearchForNearbyResources();
+            }
+
             var constructionOptions = queue.BuildableItems();
 
             var power = constructionOptions.Where(info => _aiInfo.BuildingCommonNames.Power.Contains(info.Name)).FirstOrDefault();
             var refinery = constructionOptions.Where(info => _aiInfo.BuildingCommonNames.Refinery.Contains(info.Name)).FirstOrDefault();
-            var normalStructures = constructionOptions.Where(info => !_aiInfo.BuildingCommonNames.Refinery.Contains(info.Name) && !_aiInfo.BuildingCommonNames.Power.Contains(info.Name));
+            var normalStructures = constructionOptions.Where(info => !_aiInfo.BuildingCommonNames.Refinery.Contains(info.Name) && !_aiInfo.BuildingCommonNames.Power.Contains(info.Name)).ToList();
 
             ActorInfo buildingToBuild = null;
             _remainingTicksSinceLastConstructionOrder = _orderDelay;
@@ -171,9 +184,44 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 return refinery;
             }
 
+            
+            if(!_buildings.Any(b => _aiInfo.BuildingCommonNames.Refinery.Contains(b.Info.Name)))
+            {
+                normalStructures.RemoveAll(info => _aiInfo.BuildingCommonNames.VehiclesFactory.Contains(info.Name));
+            }
+
+            normalStructures.RemoveAll(info => !_aiInfo.BuildingCommonNames.Production.Contains(info.Name) && _buildings.Any(a => a.Info.Name == info.Name));
+
+            //if power is below 100 allow powerplants to also be build for some variation 
+            if (_baseRemainingPower < 100)
+            {
+                normalStructures.Add(power);
+            }
+
+            //force ai to have atleast one warfactory
+            //also do this for other tech tree enabling production facilities like barracks
+            if ((_currentRefineryCount == 0 ? 1 : _currentRefineryCount) * _refineryToProductionRatio - 1 <= _currentProductionCount
+                && !_buildings.Any( b => _aiInfo.BuildingCommonNames.VehiclesFactory.Contains(b.Info.Name)))
+            {
+                normalStructures.RemoveAll(info => _aiInfo.BuildingCommonNames.Production.Contains(info.Name) && !_aiInfo.BuildingCommonNames.VehiclesFactory.Contains(info.Name));
+            }
+
+            if(_currentRefineryCount > 0 && _currentRefineryCount * _refineryToProductionRatio <= _currentProductionCount)
+            {
+                normalStructures.RemoveAll(info => _aiInfo.BuildingCommonNames.Production.Contains(info.Name));
+            }
+
+            //allow basecrawling to happen with powerplants if nothing else is buildable
+            if(!normalStructures.Any() && _currentRefineryTargetLocation != null)
+            {
+                return power;
+            }
             buildingToBuild = normalStructures.Random(Game.CosmeticRandom);
             if (buildingToBuild != null)
             {
+                if (!HasSufficientPowerForActor(buildingToBuild))
+                    return power;
+
                 Utility.BotDebug(_playerColor, "Building: {0}", buildingToBuild.Name);
                 return buildingToBuild;
             }
@@ -193,16 +241,10 @@ namespace OpenRA.Mods.Common.AI.Cabal
             if (_aiInfo.BuildingCommonNames.Refinery.Contains(item.Item))
             {
                 _currentRefineryTargetLocation = null;
-                targetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location,_initialBaseCenterCPos, buildingInfo, item.Item, true, 1);
-
+                targetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location,_initialBaseCenterCPos, buildingInfo, item.Item, true, _firstRefineryPlacementEver ? 0 : _defaultBuildingSpacing);
+                _firstRefineryPlacementEver = false;
                 _usedResourceSeeders.Add(_resourceSeeder);
-                _resourceSeeder = FindResourcesSeedersInCircleAroundBase(WDist.FromCells(_maxBaseRadius), _initialBaseCenterWPos).Where(rs => !_usedResourceSeeders.Contains(rs)).FirstOrDefault();
-                if (_resourceSeeder != null)
-                {
-                    Utility.BotDebug(_playerColor, "Found ResourceSeeder at {0},{1}", _resourceSeeder.Location.X, _resourceSeeder.Location.Y);
-                    _currentRefineryTargetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, buildingInfo, item.Item, false, 1);
-                    Utility.BotDebug(_playerColor, "RefineryTarget at {0},{1}", _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);
-                }
+                
             }
             else if (_currentRefineryTargetLocation.HasValue)
             {
@@ -211,9 +253,8 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 var harvesterActor = _world.Map.Rules.Actors.FirstOrDefault(ai => ai.Value.HasTraitInfo<HarvesterInfo>());
                 var mobileInfo = harvesterActor.Value.TraitInfoOrDefault<MobileInfo>();
                 var refineryBuildingInfo = _refineryInfo.TraitInfo<BuildingInfo>();
-
                 var refineryCells = GetCellsFromBuildInfo(_currentRefineryTargetLocation.Value, refineryBuildingInfo, 1);
-                targetLocation = GetBuildLocationTowardsTarget(_currentRefineryTargetLocation.Value, _initialBaseCenterCPos, buildingInfo, item.Item, true, 1, refineryCells);
+                targetLocation = GetBuildLocationTowardsTarget(_currentRefineryTargetLocation.Value, _initialBaseCenterCPos, buildingInfo, item.Item, true, _defaultBuildingSpacing, refineryCells);
             }
             else
             {
@@ -224,7 +265,7 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 var cellsToCheck = cells.ToList();
                 foreach (CPos cell in cellsToCheck)
                 {
-                    var location = ValidateBuildLocation(cell, buildingInfo, item.Item, true, 1);
+                    var location = ValidateBuildLocation(cell, buildingInfo, item.Item, true, _defaultBuildingSpacing);
 
                     if (location != null)
                         targetLocation = location;
@@ -241,6 +282,16 @@ namespace OpenRA.Mods.Common.AI.Cabal
                 Utility.BotDebug(_playerColor, "no building location for {0}", item.Item);
             }
         }
+        private void SearchForNearbyResources()
+        {
+            _resourceSeeder = FindResourcesSeedersInCircleAroundBase(WDist.FromCells(_maxBaseRadius), _initialBaseCenterWPos).Where(rs => !_usedResourceSeeders.Contains(rs)).FirstOrDefault();
+            if (_resourceSeeder != null)
+            {
+                Utility.BotDebug(_playerColor, "Found ResourceSeeder at {0},{1}", _resourceSeeder.Location.X, _resourceSeeder.Location.Y);
+                _currentRefineryTargetLocation = GetBuildLocationTowardsTarget(_resourceSeeder.Location, _initialBaseCenterCPos, _refineryInfo.TraitInfo<BuildingInfo>(), _refineryInfo.Name, false, _firstRefineryPlacementEver ? 0 : _defaultBuildingSpacing);
+                Utility.BotDebug(_playerColor, "RefineryTarget at {0},{1}", _currentRefineryTargetLocation.Value.X, _currentRefineryTargetLocation.Value.Y);
+            }
+        }
 
         private void UpdateBuildings()
         {
@@ -248,6 +299,14 @@ namespace OpenRA.Mods.Common.AI.Cabal
             var buildingActors = _world.ActorsHavingTrait<BuildingInfo>().Where(a => a.Owner == _player);
             var actorsAroundBase = _world.FindActorsInCircle(_initialBaseCenterWPos, WDist.FromCells(_maxBaseRadius));//just a little overhead to be save            
             _buildings = actorsAroundBase.Where(a => a.Info.HasTraitInfo<BuildingInfo>() && a.Owner == _player).ToList();
+            _currentRefineryCount = _buildings.Count(b => _aiInfo.BuildingCommonNames.Refinery.Contains(b.Info.Name));
+            _currentProductionCount = _buildings.Count(b => _aiInfo.BuildingCommonNames.Production.Contains(b.Info.Name));
+        }
+
+        private bool HasSufficientPowerForActor(ActorInfo actorInfo)
+        {
+            return (actorInfo.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault)
+                .Sum(p => p.Amount) + _baseRemainingPower) >= _baseTotalPower * 0.1;
         }
 
         private void CalculateBasePowerLevel()
