@@ -160,8 +160,8 @@ mod_d2k: $(mod_d2k_TARGET)
 mod_as_SRCS := $(shell find OpenRA.Mods.AS/ -iname '*.cs')
 mod_as_TARGET = mods/as/OpenRA.Mods.AS.dll
 mod_as_KIND = library
-mod_as_DEPS = $(STD_MOD_DEPS) $(mod_common_TARGET)
-mod_as_LIBS = $(COMMON_LIBS) $(STD_MOD_LIBS) $(mod_common_TARGET)
+mod_as_DEPS = $(STD_MOD_DEPS) $(mod_common_TARGET) $(mod_cnc_TARGET)
+mod_as_LIBS = $(COMMON_LIBS) $(STD_MOD_LIBS) $(mod_common_TARGET) $(mod_cnc_TARGET)
 PROGRAMS += mod_as
 mod_as: $(mod_as_TARGET)
 
