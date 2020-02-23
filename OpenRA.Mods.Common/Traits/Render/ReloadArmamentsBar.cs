@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			if (!self.Owner.IsAlliedWith(self.World.RenderPlayer))
 				return 0;
 
-			return armaments.Min(a => a.FireDelay / (float)a.Weapon.ReloadDelay);
+			return armaments.Where(a => a.IsReloading).Min(a => a.FireDelay / (float)a.Weapon.ReloadDelay);
 		}
 
 		Color ISelectionBar.GetColor() { return info.Color; }
