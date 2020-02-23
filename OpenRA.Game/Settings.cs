@@ -87,7 +87,7 @@ namespace OpenRA
 		public string GeoIPDatabase = null;
 
 		[Desc("Allow clients to see anonymised IPs for other clients.")]
-		public bool ShareAnonymizedIPs = true;
+		public bool ShareAnonymizedIPs = false;
 
 		public ServerSettings Clone()
 		{
