@@ -40,13 +40,13 @@ namespace OpenRA.Mods.Common.Traits
 		readonly HashSet<PPos> footprint;
 
 		[Sync]
-		CPos cachedLocation;
+		protected CPos cachedLocation;
 
 		[Sync]
-		WDist cachedRange;
+		protected WDist cachedRange;
 
 		[Sync]
-		protected bool CachedTraitDisabled { get; private set; }
+		protected bool cachedTraitDisabled;
 
 		WPos cachedPos;
 
@@ -60,7 +60,7 @@ namespace OpenRA.Mods.Common.Traits
 				footprint = new HashSet<PPos>();
 		}
 
-		PPos[] ProjectedCells(Actor self)
+		protected PPos[] ProjectedCells(Actor self)
 		{
 			var map = self.World.Map;
 			var minRange = Info.MinRange;
@@ -114,11 +114,11 @@ namespace OpenRA.Mods.Common.Traits
 			var traitDisabled = IsTraitDisabled;
 			var range = Range;
 
-			if (cachedRange == range && traitDisabled == CachedTraitDisabled)
+			if (cachedRange == range && traitDisabled == cachedTraitDisabled)
 				return;
 
 			cachedRange = range;
-			CachedTraitDisabled = traitDisabled;
+			cachedTraitDisabled = traitDisabled;
 
 			UpdateShroudCells(self);
 		}
@@ -139,7 +139,7 @@ namespace OpenRA.Mods.Common.Traits
 			var projectedPos = centerPosition - new WVec(0, centerPosition.Z, centerPosition.Z);
 			cachedLocation = self.World.Map.CellContaining(projectedPos);
 			cachedPos = centerPosition;
-			CachedTraitDisabled = IsTraitDisabled;
+			cachedTraitDisabled = IsTraitDisabled;
 			var cells = ProjectedCells(self);
 
 			foreach (var p in self.World.Players)
@@ -152,7 +152,7 @@ namespace OpenRA.Mods.Common.Traits
 				RemoveCellsFromPlayerShroud(self, p);
 		}
 
-		public virtual WDist Range { get { return CachedTraitDisabled ? WDist.Zero : Info.Range; } }
+		public virtual WDist Range { get { return cachedTraitDisabled ? WDist.Zero : Info.Range; } }
 
 		void INotifyMoving.MovementTypeChanged(Actor self, MovementType type)
 		{

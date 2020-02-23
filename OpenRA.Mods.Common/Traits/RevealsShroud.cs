@@ -60,7 +60,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			get
 			{
-				if (CachedTraitDisabled)
+				if (cachedTraitDisabled)
 					return WDist.Zero;
 
 				var revealsShroudModifier = rangeModifiers.Select(x => x.GetRevealsShroudModifier());
