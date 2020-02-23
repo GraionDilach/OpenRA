@@ -276,6 +276,7 @@ namespace OpenRA.Mods.Common.Traits
 		bool CanGiveResource(int amount);
 		CVec DeliveryOffset { get; }
 		bool AllowDocking { get; }
+		int DeliveryAngle { get; }
 	}
 
 	public interface IProvidesAssetBrowserPalettes
