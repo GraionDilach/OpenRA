@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.Traits
 		public virtual object Create(ActorInitializer init) { return new ResourceLayer(init.Self); }
 	}
 
-	public class ResourceLayer : IWorldLoaded
+	public class ResourceLayer : IWorldLoaded, INotifyCreated
 	{
 		static readonly CellContents EmptyCell = default(CellContents);
 
@@ -34,6 +34,8 @@ namespace OpenRA.Mods.Common.Traits
 		protected readonly CellLayer<CellContents> Content;
 
 		public bool IsResourceLayerEmpty { get { return resCells < 1; } }
+
+		IResourceLogicLayer[] resourceLogicLayers;
 
 		int resCells;
 
@@ -45,6 +47,11 @@ namespace OpenRA.Mods.Common.Traits
 			buildingInfluence = self.Trait<BuildingInfluence>();
 
 			Content = new CellLayer<CellContents>(world.Map);
+		}
+
+		void INotifyCreated.Created(Actor self)
+		{
+			resourceLogicLayers = self.TraitsImplementing<IResourceLogicLayer>().ToArray();
 		}
 
 		int GetAdjacentCellsWith(ResourceType t, CPos cell)
@@ -91,6 +98,9 @@ namespace OpenRA.Mods.Common.Traits
 					temp.Density = Math.Max(density, 1);
 
 					Content[cell] = temp;
+
+					foreach (var rl in resourceLogicLayers)
+						rl.UpdatePosition(cell, type, temp.Density);
 				}
 			}
 		}
@@ -155,6 +165,9 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (CellChanged != null)
 				CellChanged(p, cell.Type);
+
+			foreach (var rl in resourceLogicLayers)
+				rl.UpdatePosition(p, t, cell.Density);
 		}
 
 		public bool IsFull(CPos cell)
@@ -174,9 +187,17 @@ namespace OpenRA.Mods.Common.Traits
 				Content[cell] = EmptyCell;
 				world.Map.CustomTerrain[cell] = byte.MaxValue;
 				--resCells;
+
+				foreach (var rl in resourceLogicLayers)
+					rl.UpdatePosition(cell, c.Type, 0);
 			}
 			else
+			{
 				Content[cell] = c;
+
+				foreach (var rl in resourceLogicLayers)
+					rl.UpdatePosition(cell, c.Type, c.Density);
+			}
 
 			if (CellChanged != null)
 				CellChanged(cell, c.Type);
@@ -192,6 +213,9 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			--resCells;
+
+			foreach (var rl in resourceLogicLayers)
+				rl.UpdatePosition(cell, Content[cell].Type, 0);
 
 			// Clear cell
 			Content[cell] = EmptyCell;
