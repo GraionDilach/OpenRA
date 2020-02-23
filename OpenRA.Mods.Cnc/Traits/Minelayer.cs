@@ -21,7 +21,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Cnc.Traits
 {
-	public class MinelayerInfo : ITraitInfo, Requires<RearmableInfo>
+	public class MinelayerInfo : ITraitInfo
 	{
 		[ActorReference]
 		public readonly string Mine = "minv";
