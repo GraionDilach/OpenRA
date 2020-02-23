@@ -43,6 +43,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Dictionary<SupportPowerInstance, int> waitingPowers = new Dictionary<SupportPowerInstance, int>();
 		readonly Dictionary<string, SupportPowerDecision> powerDecisions = new Dictionary<string, SupportPowerDecision>();
 		readonly List<SupportPowerInstance> stalePowers = new List<SupportPowerInstance>();
+		PlayerResources playerResource;
 		SupportPowerManager supportPowerManager;
 
 		public SupportPowerBotModule(Actor self, SupportPowerBotModuleInfo info)
@@ -50,6 +51,10 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			world = self.World;
 			player = self.Owner;
+			self.World.AddFrameEndTask(w =>
+			{
+				playerResource = player.PlayerActor.Trait<PlayerResources>();
+			});
 		}
 
 		protected override void Created(Actor self)
@@ -89,6 +94,14 @@ namespace OpenRA.Mods.Common.Traits
 					if (powerDecision == null)
 					{
 						AIUtils.BotDebug("Bot Bug: FindAttackLocationToSupportPower, couldn't find powerDecision for {0}", sp.Info.OrderName);
+						continue;
+					}
+
+					if (sp.Info.Cost != 0 && playerResource.Cash + playerResource.Resources < sp.Info.Cost)
+					{
+						AIUtils.BotDebug("AI: {1} can't afford the activation of support power {0}. Delaying rescan.", sp.Info.OrderName, player.PlayerName);
+						waitingPowers[sp] += powerDecision.GetNextScanTime(world);
+
 						continue;
 					}
 
